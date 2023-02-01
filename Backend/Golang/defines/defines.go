@@ -1,9 +1,9 @@
 package defines
 
 import (
-	"encoding/json"
-	"errors"
 	"time"
+
+	"github.com/DigitalBiologyPlatform/Backend/utils"
 )
 
 type SimpleReturnMessage struct {
@@ -37,9 +37,23 @@ type Electrode struct {
 
 // Frame defines model for Frame.
 type Frame struct {
-	Duration   int         `json:"duration,omitempty"`
-	Electrodes []Electrode `json:"electrodes,omitempty"`
-	Rank       int         `json:"rank,omitempty"`
+	Duration     int                   `json:"duration,omitempty"`
+	Electrodes   []Electrode           `json:"electrodes,omitempty"`
+	Rank         int                   `json:"rank,omitempty"`
+	Magnets      *[]IndexedMagnet      `json:"magnets,omitempty"`
+	Temperatures *[]IndexedTemperature `json:"temperatures,omitempty"`
+}
+
+// IndexedMagnet defines model for IndexedMagnet.
+type IndexedMagnet struct {
+	Index int  `json:"index"`
+	Value bool `json:"value"`
+}
+
+// IndexedTemperature defines model for IndexedTemperature.
+type IndexedTemperature struct {
+	Index int     `json:"index"`
+	Value float32 `json:"value"`
 }
 
 // RankedAuthor defines model for RankedAuthor.
@@ -59,6 +73,7 @@ type ShortProtocol struct {
 	Description   string         `json:"description"`
 	TotalDuration int            `json:"total_duration"`
 	DeviceID      int            `json:"device_id"`
+	Public        bool           `json:"public"`
 }
 
 // ShortProtocol defines model for ShortProtocol.
@@ -72,6 +87,7 @@ type FullProtocol struct {
 	TotalDuration int            `json:"total_duration"`
 	DeviceID      int            `json:"device_id"`
 	MaskFrame     Frame          `json:"mask_frame"`
+	Public        bool           `json:"public"`
 }
 
 func (fp *FullProtocol) AuthoredBy(username string) bool {
@@ -83,26 +99,16 @@ func (fp *FullProtocol) AuthoredBy(username string) bool {
 	return false
 }
 
-// bytesUnmarshall is used to make objets implement the Scan interface to decode json from database into proper objects.
-func bytesUnmarshall(destination interface{}, value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-
-	return json.Unmarshal(b, &destination)
-}
-
 // Make the Attrs struct implement the sql.Scanner interface. This method
 // simply decodes a JSON-encoded value into the struct fields.
 func (a *User) Scan(value interface{}) error {
-	return bytesUnmarshall(&a, value)
+	return utils.BytesUnmarshall(&a, value)
 }
 
 func (sp *ShortProtocol) Scan(value interface{}) error {
-	return bytesUnmarshall(&sp, value)
+	return utils.BytesUnmarshall(&sp, value)
 }
 
 func (sp *FullProtocol) Scan(value interface{}) error {
-	return bytesUnmarshall(&sp, value)
+	return utils.BytesUnmarshall(&sp, value)
 }

@@ -36,6 +36,7 @@ WITH frame AS (
 
 		SELECT 
 		      p.id as protocol_id
+              , p.public
 			  , p.name
 		      , p.frame_count
 		      , p.total_duration
@@ -44,7 +45,6 @@ WITH frame AS (
 		      , authors.login as author
 		      , authors_list.list as authors_list
 		      , authors.rank as author_rank
-			  , p.public
 		      , array_agg(jsonb_build_object(
 		       'duration', frame.duration,
 		       'electrodes', frame.electrodes
@@ -53,8 +53,12 @@ WITH frame AS (
 		JOIN frame ON p.mask_frame_id = frame_id
 		JOIN authors ON authors.protocol_id = p.id
 		JOIN authors_list ON authors_list.protocol_id = p.id
-		WHERE authors.login = $1
+		--WHERE authors.login = 'testuser'
+		WHERE p."public" IS TRUE
 		GROUP BY p.id, authors_list.list, p.device_id, authors.login, authors.rank, p.description, p.public
+        ORDER BY p.id
+		LIMIT $1
+		OFFSET $2
 )
 SELECT
 	jsonb_build_object(
@@ -67,7 +71,7 @@ SELECT
 	'author_rank', protocol.author_rank,
 	'description', protocol.description,
 	'device_id', protocol.device_id,
-	'public', protocol.public
+    'public', protocol.public
 	) AS protocols
 FROM protocol
 GROUP BY protocol.protocol_id, name, frame_count, total_duration, mask_frame, protocol.authors_list, protocol.author_rank, protocol.description, protocol.device_id, protocol.public

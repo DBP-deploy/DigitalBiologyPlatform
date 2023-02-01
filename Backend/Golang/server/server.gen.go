@@ -38,9 +38,11 @@ type Electrode struct {
 
 // Frame defines model for Frame.
 type Frame struct {
-	Duration   float32     `json:"duration"`
-	Electrodes []Electrode `json:"electrodes"`
-	Rank       float32     `json:"rank"`
+	Duration     float32               `json:"duration"`
+	Electrodes   []Electrode           `json:"electrodes"`
+	Magnets      *[]IndexedMagnet      `json:"magnets,omitempty"`
+	Rank         float32               `json:"rank"`
+	Temperatures *[]IndexedTemperature `json:"temperatures,omitempty"`
 }
 
 // FullProtocol defines model for FullProtocol.
@@ -52,7 +54,20 @@ type FullProtocol struct {
 	Frames        []Frame         `json:"frames"`
 	Id            float32         `json:"id"`
 	Name          string          `json:"name"`
+	Public        bool            `json:"public"`
 	TotalDuration float32         `json:"total_duration"`
+}
+
+// IndexedMagnet defines model for IndexedMagnet.
+type IndexedMagnet struct {
+	Index float32 `json:"index"`
+	Value bool    `json:"value"`
+}
+
+// IndexedTemperature defines model for IndexedTemperature.
+type IndexedTemperature struct {
+	Index float32 `json:"index"`
+	Value float32 `json:"value"`
 }
 
 // LoginParams defines model for LoginParams.
@@ -83,7 +98,13 @@ type ShortProtocol struct {
 	Id            float32        `json:"id"`
 	MaskFrame     []Frame        `json:"mask_frame"`
 	Name          string         `json:"name"`
+	Public        bool           `json:"public"`
 	TotalDuration float32        `json:"total_duration"`
+}
+
+// ShortProtocolsList defines model for ShortProtocolsList.
+type ShortProtocolsList struct {
+	Protocols []ShortProtocol `json:"protocols"`
 }
 
 // UploadProtocolParams defines model for UploadProtocolParams.
@@ -93,6 +114,7 @@ type UploadProtocolParams struct {
 	DeviceId    float32        `json:"device_id"`
 	Frames      []Frame        `json:"frames"`
 	Name        string         `json:"name"`
+	Public      bool           `json:"public"`
 }
 
 // User defines model for User.
@@ -103,16 +125,20 @@ type User struct {
 	Username *string       `json:"username,omitempty"`
 }
 
-// UserProtocolsList defines model for UserProtocolsList.
-type UserProtocolsList struct {
-	Protocols []ShortProtocol `json:"protocols"`
-}
-
 // UploadProtocolJSONBody defines parameters for UploadProtocol.
 type UploadProtocolJSONBody = UploadProtocolParams
 
 // OverwriteProtocolJSONBody defines parameters for OverwriteProtocol.
 type OverwriteProtocolJSONBody = UploadProtocolParams
+
+// GetPublicProtocolsListParams defines parameters for GetPublicProtocolsList.
+type GetPublicProtocolsListParams struct {
+	// The number of items to skip before starting to collect the result set
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// The numbers of items to return
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
 // CreateUserJSONBody defines parameters for CreateUser.
 type CreateUserJSONBody = CreateUserParams
@@ -149,6 +175,12 @@ type ServerInterface interface {
 	// update a particular entire protocol by its ID
 	// (PUT /protocol/{protocolID})
 	OverwriteProtocol(ctx echo.Context, protocolID int) error
+	// Get public protocols list
+	// (GET /public/protocol/all)
+	GetPublicProtocolsList(ctx echo.Context, params GetPublicProtocolsListParams) error
+	// Get a particular protocol by its ID
+	// (GET /public/protocol/{protocolID})
+	GetPublicProtocol(ctx echo.Context, protocolID int) error
 	// Serve a json file representing this swaggerfile
 	// (GET /swagger.json)
 	ServeSwaggerFile(ctx echo.Context) error
@@ -244,6 +276,47 @@ func (w *ServerInterfaceWrapper) OverwriteProtocol(ctx echo.Context) error {
 	return err
 }
 
+// GetPublicProtocolsList converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPublicProtocolsList(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPublicProtocolsListParams
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", ctx.QueryParams(), &params.Offset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter offset: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetPublicProtocolsList(ctx, params)
+	return err
+}
+
+// GetPublicProtocol converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPublicProtocol(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "protocolID" -------------
+	var protocolID int
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "protocolID", runtime.ParamLocationPath, ctx.Param("protocolID"), &protocolID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter protocolID: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetPublicProtocol(ctx, protocolID)
+	return err
+}
+
 // ServeSwaggerFile converts echo context to params.
 func (w *ServerInterfaceWrapper) ServeSwaggerFile(ctx echo.Context) error {
 	var err error
@@ -315,6 +388,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/protocol/:protocolID", wrapper.DeleteProtocol)
 	router.GET(baseURL+"/protocol/:protocolID", wrapper.GetProtocol)
 	router.PUT(baseURL+"/protocol/:protocolID", wrapper.OverwriteProtocol)
+	router.GET(baseURL+"/public/protocol/all", wrapper.GetPublicProtocolsList)
+	router.GET(baseURL+"/public/protocol/:protocolID", wrapper.GetPublicProtocol)
 	router.GET(baseURL+"/swagger.json", wrapper.ServeSwaggerFile)
 	router.POST(baseURL+"/user", wrapper.CreateUser)
 	router.POST(baseURL+"/user/login", wrapper.LoginUser)
@@ -325,33 +400,36 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"qwerm9XfAQAA///R0d+Mkh0AAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
