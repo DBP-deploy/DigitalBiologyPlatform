@@ -22,11 +22,17 @@ type AuthToken struct {
 
 // User defines model for User.
 type User struct {
-	Id       int64  `json:"id,omitempty"`
-	Password string `json:"password,omitempty"`
-	Login    string `json:"username,omitempty"`
-	Email    string `json:"email,omitempty"`
-	Tokens   []LoginToken
+	Id                   int64  `json:"id,omitempty"`
+	Password             string `json:"password,omitempty"`
+	Login                string `json:"username,omitempty"`
+	Email                string `json:"email,omitempty"`
+	Fullname             string `json:"fullname,omitempty"`
+	Bio                  string `json:"bio,omitempty"`
+	Website              string `json:"website,omitempty"`
+	Institution          string `json:"institution,omitempty"`
+	PublicProtocolAmount int    `json:"public_protocol_amount"`
+	ProtocolAmount       int    `json:"protocol_amount"`
+	Tokens               []LoginToken
 }
 
 // Electrode defines model for Electrode.
@@ -90,6 +96,13 @@ type FullProtocol struct {
 	Public        bool           `json:"public"`
 }
 
+type Device struct {
+	ID         int      `json:"id"`
+	Electrodes []string `json:"electrodes"`
+	SVG        string   `json:"svg"`
+	Name       string   `json:"name"`
+}
+
 func (fp *FullProtocol) AuthoredBy(username string) bool {
 	for _, author := range fp.AuthorList {
 		if author.Author == username {
@@ -111,4 +124,8 @@ func (sp *ShortProtocol) Scan(value interface{}) error {
 
 func (sp *FullProtocol) Scan(value interface{}) error {
 	return utils.BytesUnmarshall(&sp, value)
+}
+
+func (d *Device) Scan(value interface{}) error {
+	return utils.BytesUnmarshall(&d, value)
 }

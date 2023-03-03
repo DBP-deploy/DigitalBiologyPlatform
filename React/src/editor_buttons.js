@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, ConnectPictoVoid, ConnectPictoConnected, SwitchT
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowLeft, faArrowRight, faCircle, faCircleArrowLeft, faCircleDot, faCog, faExpand, faFloppyDisk, faPause, faPlay } from '@fortawesome/free-solid-svg-icons'
 import Switch from '@mui/material/Switch';
+import { FormControl, InputLabel, MenuItem,Select } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
 
@@ -38,7 +39,7 @@ function Send(props) {
 
   if (props.state.playing) {
     return (
-      <button  title="Pause Sequence" className="editor_btn" onClick={props.onClick}>
+      <button title="Pause Sequence" className="editor_btn" onClick={props.onClick}>
         <FontAwesomeIcon icon={faPause} />
       </button>
     );
@@ -82,13 +83,6 @@ function Enlarge(props) {
   );
 }
 function Save(props) {
-  if (props.state.liveMode === true) {
-    return (
-      <button disabled title="Save" className="editor_btn end_btn" onClick={props.onClick}>
-        <FontAwesomeIcon icon={faFloppyDisk} />
-      </button>
-    );
-  } else {
     return (
       <React.Fragment>
         <button title="Save" className="editor_btn end_btn" onClick={props.onClick}>
@@ -96,7 +90,6 @@ function Save(props) {
         </button>
       </React.Fragment>
     );
-  }
 }
 
 function Live(props) {
@@ -130,17 +123,12 @@ class EditorButtons extends React.Component {
 
   async SelectSerialClick() {
     //console.log("CONNECT CLICKED")
-    //this.setLogginToggle(true)
-    //console.log("USERNAME :")
     //console.log(this.props.state.username)
-    //if ("serial" in navigator) {
-    //    //console.log("The serial port is supported.")
-    // The Web Serial API is supported.
-    //} else {
-    //TODO :
-    //Propoer error message ?
-    //    alert("This web browser is not compatible with serial API")
-    //}
+    if ("serial" in navigator) {
+       console.log("The serial port is supported.")
+    } else {
+       alert("This web browser is not compatible with serial API, Google Chrome is prefered.")
+    }
     const port = await navigator.serial.requestPort();
     this.props.state.setSerialPort(port)
     /*
@@ -154,7 +142,7 @@ class EditorButtons extends React.Component {
 
   ToggleSettingsClick() {
     this.setState({
-      settingsOpen : !this.state.settingsOpen
+      settingsOpen: !this.state.settingsOpen
     })
   }
 
@@ -164,6 +152,16 @@ class EditorButtons extends React.Component {
 
     return (
       <React.Fragment>
+        <div className="range_buttons_container">
+        <div className="buttons_container">
+          <PreviousFrame onClick={() => this.props.state.goToPreviousFrame()} />
+          <Send state={this.props.state} onClick={() => this.props.state.serialSendClick()} />
+          <NextFrame onClick={() => this.props.state.goToNextFrame()} />
+          <SelectSerial state={this.props.state} onClick={() => this.SelectSerialClick()} />
+          <Settings onClick={() => this.ToggleSettingsClick()} />
+          <Live state={this.props.state} onClick={() => this.props.state.liveModeTrigger()} />
+          <Save state={this.props.state} onClick={() => this.props.state.saveClick()} />
+        </div>
         <div className="range_container">
           <Range
             values={this.props.state.currently_edited_frame}
@@ -226,44 +224,69 @@ class EditorButtons extends React.Component {
             )}
           />
         </div>
-        <div className="buttons_container">
-          <PreviousFrame onClick={() => this.props.state.goToPreviousFrame()} />
-          <Send state={this.props.state} onClick={() => this.props.state.serialSendClick()} />
-          <NextFrame onClick={() => this.props.state.goToNextFrame()} />
-          <SelectSerial state={this.props.state} onClick={() => this.SelectSerialClick()} />
-          <Settings onClick={() => this.ToggleSettingsClick()} />
-          <Enlarge onClick={() => this.SelectSerialClick()} />
-          <Live state={this.props.state} onClick={() => this.props.state.liveModeTrigger()} />
-          <Save state={this.props.state} onClick={() => this.props.state.saveClick()} />
-        </div>
-        <div className="settings_container" style={{display: this.state.settingsOpen ? 'block' : 'none' }}>
-          Settings
-          <br/>
-          <br/>
+        <div className="fullsettings_container" style={{ display: this.state.settingsOpen ? 'block' : 'none' }}>
+          <br />
+          <br />
+          <div className="settings_container">
+          <div className="column_settings">
+            <span>
           <ThemeProvider theme={SwitchTheme}>
-            <Switch 
-            //defaultChecked 
-              size="small" 
-            checked={this.props.state.loopMode}
+            <Switch
+              //defaultChecked 
+              size="small"
+              checked={this.props.state.loopMode}
               onChange={this.props.state.toggleLoopMode}
             /> Loop Mode
           </ThemeProvider>
-          <br/>
-          <br/>
+
+          </span>
+          <span>
+          <ThemeProvider theme={SwitchTheme}>
+            <Switch
+              //defaultChecked 
+              size="small"
+              checked={this.props.state.feedbackMode}
+              onChange={this.props.state.toggleFeedbackMode}
+            /> Enable Feedback
+          </ThemeProvider>
+          </span>
+ 
+          </div>
+
+          <div className="column_settings">
+          <FormControl fullWidth size="small">
+            <InputLabel id="demo-simple-select-label">Cartridge</InputLabel>
+            <Select
+              labelId="demo-simple-select-label"
+              id="demo-simple-select"
+              value={this.props.state.currentCartridge}
+              label="Adaptor"
+              onChange={this.props.state.changeCartridge}
+            >
+              <MenuItem value={"standard"}>Standard</MenuItem>
+              <MenuItem value={"glass"}>Glass cartridge</MenuItem>
+            </Select>
+          </FormControl>
+          </div>
+          </div>
+          <br />
+          <br />
           <form>
-          <label htmlFor="frame_amount">
-          Total amount of frames
-        </label>
-        <input className="control_input" name="frame_amount" type="number" value={this.props.state.framesAmount} onChange={this.props.state.handleFrameAmountChange} />
-        <br/>
-        <label htmlFor="default_duration">
-          Default new frame duration
-        </label>
-        <input className="control_input" name="default_duration" type="number" value={this.props.state.defaultDuration} onChange={this.props.state.setDefaultFrameDuration} />
-      </form>
-          <br/>
-          <br/>
+            <label htmlFor="frame_amount">
+              Total amount of frames
+            </label>
+            <input className="settings_control_input" name="frame_amount" type="number" value={this.props.state.framesAmount} onChange={this.props.state.handleFrameAmountChange} />
+            <br />
+            <label htmlFor="default_duration">
+              Default new frame duration
+            </label>
+            <input className="settings_control_input" name="default_duration" type="number" value={this.props.state.defaultDuration} onChange={this.props.state.setDefaultFrameDuration} />
+          </form>
+          <br />
+          <br />
         </div>
+        </div>
+
       </React.Fragment>
     )
   }

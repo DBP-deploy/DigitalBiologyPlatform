@@ -145,6 +145,34 @@ func NewPostgresRepo() (*PostgresRepo, error) {
 	return &outputRepo, nil
 }
 
+func (repo *PostgresRepo) GetAllDevices() ([]defines.Device, error) {
+	const filename = "POSTGRESQL/GetDevices.sql"
+	queryBytes, err := embeddedSQL.ReadFile(filename)
+	if err != nil {
+		log.Fatalf("Could not find embedded SQL file '%s' : %s", filename, err.Error())
+	}
+
+	var returnedDevices []defines.Device
+	rows, err := repo.dbConn.Query(string(queryBytes))
+	if err != nil {
+		return returnedDevices, err
+	}
+
+	for rows.Next() {
+		var deviceToAdd defines.Device
+		err := rows.Scan(&deviceToAdd)
+		if err != nil {
+			//TODO: handle error
+		}
+		returnedDevices = append(returnedDevices, deviceToAdd)
+	}
+
+	//TODO: check SQL error ?
+
+	return returnedDevices, nil
+
+}
+
 func (repo *PostgresRepo) OverwriteProtocol(protocolID int, protocol defines.FullProtocol, username string) error {
 
 	var filename string
@@ -549,7 +577,7 @@ func (repo *PostgresRepo) CreateUser(user defines.User) error {
 	}
 	//spew.Dump(string(bts))
 
-	result, err := repo.dbConn.Exec(string(queryBytes), user.Login, hashedPassword, user.Email)
+	result, err := repo.dbConn.Exec(string(queryBytes), user.Login, hashedPassword, user.Email, user.Fullname, user.Institution, user.Website, user.Bio)
 	if err != nil {
 		return err
 	}
