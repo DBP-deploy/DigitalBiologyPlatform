@@ -1149,7 +1149,15 @@ class Body extends React.Component {
       for (var magnet_index = 0; magnet_index < this.state.frames[i].magnets.length; magnet_index++) {
         var magnetToAdd = Object.create(magnet)
         magnetToAdd.index = magnet_index
-        magnetToAdd.value = this.state.frames[i].magnets[magnet_index]
+        
+        //Fix non-nullable magnet values on backend side, forcing false if null
+        var magnetValue = this.state.frames[i].magnets[magnet_index]
+        
+        if (magnetValue == null || magnetValue == undefined || magnetValue === '') {
+          magnetValue = false
+        }
+
+        magnetToAdd.value = magnetValue
 
         magnetsToAdd.push(magnetToAdd) 
       }

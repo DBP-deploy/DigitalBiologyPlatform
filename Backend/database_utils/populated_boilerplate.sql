@@ -1839,4 +1839,3 @@ ALTER TABLE ONLY users.token
 --
 -- PostgreSQL database dump complete
 --
-
